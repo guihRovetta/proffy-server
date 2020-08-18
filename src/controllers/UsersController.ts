@@ -42,4 +42,18 @@ export default class UsersController {
 
     return response.json({ user_id, ...user });
   }
+
+  async show(request: Request, response: Response) {
+    const { id } = request.params;
+
+    const user = await db('users').where('id', id).first();
+
+    if (!user) {
+      return response.status(400).json({ message: 'User not found.' });
+    }
+
+    delete user.password;
+
+    return response.json({ user });
+  }
 }
