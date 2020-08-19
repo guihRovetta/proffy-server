@@ -28,6 +28,7 @@ routes.post('/users', usersController.create);
 
 routes.post('/auth', authController.authenticate);
 
+routes.get('/favorites', authMiddleware, favoritesController.index);
 routes.post('/favorites', authMiddleware, favoritesController.create);
 
 export default routes;
