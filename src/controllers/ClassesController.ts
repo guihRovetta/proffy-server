@@ -17,6 +17,8 @@ export default class ClassesController {
     const subject = filters.subject as string;
     const week_day = filters.week_day as string;
     const time = filters.time as string;
+    const limit = Number(filters.limit) || 10;
+    const offset = Number(filters.offset) || 0;
 
     if (!subject || !week_day || !time) {
       return response.status(400).json({
@@ -37,7 +39,9 @@ export default class ClassesController {
       })
       .where('classes.subject', '=', subject)
       .join('users', 'classes.user_id', '=', 'users.id')
-      .select(['classes.*', 'users.*']);
+      .select(['classes.*', 'users.*'])
+      .limit(limit)
+      .offset(offset);
 
     return response.json(classes);
   }
