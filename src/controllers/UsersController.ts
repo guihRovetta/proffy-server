@@ -25,22 +25,30 @@ export default class UsersController {
 
     const trx = await db.transaction();
 
-    const user = {
-      name,
-      lastname,
-      email,
-      password: bcrypt.hashSync(password, 8),
-    };
+    try {
+      const user = {
+        name,
+        lastname,
+        email,
+        password: bcrypt.hashSync(password, 8),
+      };
 
-    const insertedIds = await trx('users').insert(user);
+      const insertedIds = await trx('users').insert(user);
 
-    const user_id = insertedIds[0];
+      const user_id = insertedIds[0];
 
-    await trx.commit();
+      await trx.commit();
 
-    delete user.password;
+      delete user.password;
 
-    return response.json({ user_id, ...user });
+      return response.json({ user_id, ...user });
+    } catch {
+      await trx.rollback();
+
+      return response.status(400).json({
+        error: 'Unexpected error while creating new user',
+      });
+    }
   }
 
   async show(request: Request, response: Response) {

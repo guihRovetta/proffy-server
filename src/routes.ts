@@ -15,7 +15,8 @@ const usersController = new UsersController();
 const authController = new AuthController();
 
 routes.get('/classes', classesController.index);
-routes.post('/classes', classesController.create);
+routes.post('/classes', authMiddleware, classesController.create);
+routes.put('/classes', authMiddleware, classesController.update);
 
 routes.get('/connections', connectionsController.index);
 routes.post('/connections', connectionsController.create);

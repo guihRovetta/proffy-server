@@ -43,27 +43,26 @@ export default class ClassesController {
   }
 
   async create(request: Request, response: Response) {
-    const {
-      name,
-      avatar,
-      whatsapp,
-      bio,
-      subject,
-      cost,
-      schedule,
-    } = request.body;
+    const { subject, cost, schedule } = request.body;
+
+    if (!subject || !cost || !schedule) {
+      return response.status(400).json({
+        error: 'Missing fields to create class',
+      });
+    }
+
+    const id = request.userId;
+
+    const user = await db('users').where('id', id).first();
+
+    if (!user) {
+      return response.status(400).json({ message: 'User not found.' });
+    }
 
     const trx = await db.transaction();
 
     try {
-      const insertedUsersIds = await trx('users').insert({
-        name,
-        avatar,
-        whatsapp,
-        bio,
-      });
-
-      const user_id = insertedUsersIds[0];
+      const user_id = user.id;
 
       const insertedClassesIds = await trx('classes').insert({
         subject,
@@ -72,6 +71,72 @@ export default class ClassesController {
       });
 
       const class_id = insertedClassesIds[0];
+
+      const classSchedule = schedule.map((scheduleItem: ScheduleItem) => {
+        return {
+          class_id,
+          week_day: scheduleItem.week_day,
+          from: convertHourToMinutes(scheduleItem.from),
+          to: convertHourToMinutes(scheduleItem.to),
+        };
+      });
+
+      await trx('class_schedule').insert(classSchedule);
+
+      await trx.commit();
+
+      return response.status(201).send();
+    } catch (err) {
+      await trx.rollback();
+
+      return response.status(400).json({
+        error: 'Unexpected error while creating new class',
+      });
+    }
+  }
+
+  async update(request: Request, response: Response) {
+    const {
+      name,
+      lastname,
+      email,
+      avatar,
+      whatsapp,
+      bio,
+      subject,
+      cost,
+      schedule,
+    } = request.body;
+
+    if (!name || !lastname || !email || !subject || !cost || !schedule) {
+      return response.status(400).json({
+        error: 'Missing fields to update user info',
+      });
+    }
+
+    const id = request.userId;
+
+    const userClass = await db('classes').where('user_id', id).first();
+    const class_id = userClass.id;
+
+    const trx = await db.transaction();
+
+    try {
+      await trx('users').where('id', id).update({
+        name,
+        lastname,
+        email,
+        avatar,
+        whatsapp,
+        bio,
+      });
+
+      await trx('classes').where('id', class_id).update({
+        subject,
+        cost,
+      });
+
+      await trx('class_schedule').where('class_id', class_id).del();
 
       const classSchedule = schedule.map((scheduleItem: ScheduleItem) => {
         return {
