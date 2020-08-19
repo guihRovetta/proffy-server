@@ -1,5 +1,7 @@
 import express from 'express';
 
+import authMiddleware from './middlewares/authMiddleware';
+
 import ClassesController from './controllers/ClassesController';
 import ConnectionsController from './controllers/ConnectionsController';
 import UsersController from './controllers/UsersController';
@@ -18,7 +20,7 @@ routes.post('/classes', classesController.create);
 routes.get('/connections', connectionsController.index);
 routes.post('/connections', connectionsController.create);
 
-routes.get('/users/:id', usersController.show);
+routes.get('/users/:id', authMiddleware, usersController.show);
 routes.post('/users', usersController.create);
 
 routes.post('/auth', authController.authenticate);
