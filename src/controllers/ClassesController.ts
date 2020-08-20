@@ -17,8 +17,9 @@ export default class ClassesController {
     const subject = filters.subject as string;
     const week_day = filters.week_day as string;
     const time = filters.time as string;
-    const limit = Number(filters.limit) || 10;
-    const offset = Number(filters.offset) || 0;
+
+    const limit = Number(filters.limit) || 5;
+    const page = Number(filters.page) || 1;
 
     if (!subject || !week_day || !time) {
       return response.status(400).json({
@@ -41,21 +42,27 @@ export default class ClassesController {
       .join('users', 'classes.user_id', '=', 'users.id')
       .select(['classes.*', 'users.*'])
       .limit(limit)
-      .offset(offset);
+      .offset((page - 1) * limit);
 
     return response.json(classes);
   }
 
   async create(request: Request, response: Response) {
-    const { subject, cost, schedule } = request.body;
+    const { avatar, whatsapp, bio, subject, cost, schedule } = request.body;
 
-    if (!subject || !cost || !schedule) {
+    const id = request.userId;
+
+    if (!avatar || !whatsapp || !bio) {
       return response.status(400).json({
-        error: 'Missing fields to create class',
+        error: 'Missing personal data to create class',
       });
     }
 
-    const id = request.userId;
+    if (!subject || !cost || !schedule) {
+      return response.status(400).json({
+        error: 'Missing class data to create class',
+      });
+    }
 
     const user = await db('users').where('id', id).first();
 
@@ -63,9 +70,23 @@ export default class ClassesController {
       return response.status(400).json({ message: 'User not found.' });
     }
 
+    const classExists = await db('classes').where('user_id', id).first();
+
+    if (classExists) {
+      return response.status(400).json({
+        message: 'This user already has a class registered, try to update it.',
+      });
+    }
+
     const trx = await db.transaction();
 
     try {
+      await trx('users').where('id', id).update({
+        avatar,
+        whatsapp,
+        bio,
+      });
+
       const user_id = user.id;
 
       const insertedClassesIds = await trx('classes').insert({
