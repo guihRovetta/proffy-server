@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { v4 } from 'uuid';
+import nodemailer from 'nodemailer';
 
 import db from '../database/connection';
+
+import MailProvider from '../providers/MailProvider';
 
 interface User {
   id: number;
@@ -44,5 +48,53 @@ export default class AuthController {
     delete user.password;
 
     return response.json({ user, token });
+  }
+
+  async forgotPassword(request: Request, response: Response) {
+    const { email } = request.body;
+
+    const userExists = await db('users')
+      .where('email', email)
+      .select('*')
+      .first();
+
+    if (!userExists) {
+      return response.status(400).json({
+        error: 'This user do not exists, please check your email! ',
+      });
+    }
+
+    const trx = await db.transaction();
+
+    try {
+      let resetedPassword = v4();
+      resetedPassword = resetedPassword.substr(0, 8);
+
+      const encryptedPassword = bcrypt.hashSync(resetedPassword, 8);
+
+      const mailProvider = new MailProvider();
+      const emailMessage = {
+        from: '"Equipe Proffy" <support@proffy.com>',
+        to: email,
+        subject: 'Redefinição de senha',
+        text: `Olá, somos da equipe de suporte da Proffy, esse email foi enviado para sua redefinição de senha, que no momento é essa ${resetedPassword}`,
+        html: `<b>Olá, somos da equipe de suporte da Proffy, esse email foi enviado para sua redefinição de senha, que no momento é essa ${resetedPassword}</b>`,
+      };
+      await mailProvider.sendMail(emailMessage);
+
+      await trx('users')
+        .where('email', email)
+        .update('password', encryptedPassword);
+
+      await trx.commit();
+
+      return response.status(201).send();
+    } catch (err) {
+      await trx.rollback();
+
+      return response.status(400).json({
+        error: 'Unexpected error while sending your email',
+      });
+    }
   }
 }

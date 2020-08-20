@@ -28,6 +28,7 @@ routes.get('/users/:id', authMiddleware, usersController.show);
 routes.post('/users', usersController.create);
 
 routes.post('/auth', authController.authenticate);
+routes.post('/forgot', authController.forgotPassword);
 
 routes.get('/favorites', authMiddleware, favoritesController.index);
 routes.post('/favorites', authMiddleware, favoritesController.create);
