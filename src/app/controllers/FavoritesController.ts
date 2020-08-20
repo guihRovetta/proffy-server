@@ -1,23 +1,16 @@
 import { Request, Response } from 'express';
-import db from '../../database/connection';
+import FavoritesRepository from '../repositories/FavoritesRepository';
+import UsersRepository from '../repositories/UsersRepository';
+
+const favoritesRepository = new FavoritesRepository();
+const usersRepository = new UsersRepository();
 
 export default class FavoritesController {
   async index(request: Request, response: Response) {
     const user_id = request.userId;
 
     try {
-      const favoriteUsers = await db('favorites')
-        .where('favorites.user_id', '=', user_id)
-        .join('users', 'favorites.proffy_id', '=', 'users.id')
-        .select(
-          'users.id',
-          'users.name',
-          'users.lastname',
-          'users.email',
-          'users.avatar',
-          'users.whatsapp',
-          'users.bio'
-        );
+      const favoriteUsers = await favoritesRepository.findAll(Number(user_id));
 
       return response.status(201).json(favoriteUsers);
     } catch {
@@ -30,16 +23,16 @@ export default class FavoritesController {
   async create(request: Request, response: Response) {
     const { proffy_id } = request.body;
 
-    const user_id = request.userId;
-
-    const user = await db('users').where('id', proffy_id).first();
-
-    if (!user) {
-      return response.status(400).json({ message: 'Proffy not found.' });
-    }
+    const user_id = Number(request.userId);
 
     try {
-      await db('favorites').insert({ user_id, proffy_id });
+      const user = await usersRepository.findById(user_id);
+
+      if (!user) {
+        return response.status(400).json({ message: 'Proffy not found.' });
+      }
+
+      await favoritesRepository.create(user_id, proffy_id);
 
       return response.status(201).json();
     } catch {

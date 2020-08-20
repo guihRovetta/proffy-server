@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 
-import db from '../../database/connection';
+import UsersRepository from '../repositories/UsersRepository';
+
+const usersRepository = new UsersRepository();
 
 export default class UsersController {
   async create(request: Request, response: Response) {
@@ -13,17 +15,13 @@ export default class UsersController {
       });
     }
 
-    const userExists = await db('users')
-      .where('email', email)
-      .select('users.*');
+    const userExists = await usersRepository.findByEmail(email);
 
-    if (userExists.length > 0) {
+    if (userExists) {
       return response.status(400).json({
         error: 'This e-mail is already in use',
       });
     }
-
-    const trx = await db.transaction();
 
     try {
       const user = {
@@ -33,18 +31,14 @@ export default class UsersController {
         password: bcrypt.hashSync(password, 8),
       };
 
-      const insertedIds = await trx('users').insert(user);
+      const insertedIds = await usersRepository.create(user);
 
       const user_id = insertedIds[0];
-
-      await trx.commit();
 
       delete user.password;
 
       return response.json({ user_id, ...user });
     } catch {
-      await trx.rollback();
-
       return response.status(400).json({
         error: 'Unexpected error while creating new user',
       });
@@ -54,7 +48,7 @@ export default class UsersController {
   async show(request: Request, response: Response) {
     const { id } = request.params;
 
-    const user = await db('users').where('id', id).first();
+    const user = await usersRepository.findById(Number(id));
 
     if (!user) {
       return response.status(400).json({ message: 'User not found.' });

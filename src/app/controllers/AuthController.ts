@@ -3,9 +3,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 } from 'uuid';
 
-import db from '../../database/connection';
-
+import UsersRepository from '../repositories/UsersRepository';
 import MailProvider from '../providers/MailProvider';
+
+const usersRepository = new UsersRepository();
 
 interface User {
   id: number;
@@ -23,17 +24,15 @@ export default class AuthController {
       });
     }
 
-    const users = await db('users').where('email', email).select('users.*');
+    const userExists = await usersRepository.findByEmail(email);
 
-    if (users.length === 0) {
+    if (!userExists) {
       return response.status(401).json({
         error: 'Verify your email and password',
       });
     }
 
-    const user = users[0] as User;
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, userExists.password);
 
     if (!isValidPassword) {
       return response.status(401).json({
@@ -42,28 +41,23 @@ export default class AuthController {
     }
 
     const secret = process.env.JWT_SECRET as string;
-    const token = jwt.sign({ id: user.id }, secret, { expiresIn: '1d' });
+    const token = jwt.sign({ id: userExists.id }, secret, { expiresIn: '1d' });
 
-    delete user.password;
+    delete userExists.password;
 
-    return response.json({ user, token });
+    return response.json({ userExists, token });
   }
 
   async forgotPassword(request: Request, response: Response) {
     const { email } = request.body;
 
-    const userExists = await db('users')
-      .where('email', email)
-      .select('*')
-      .first();
+    const userExists = usersRepository.findByEmail(email);
 
     if (!userExists) {
       return response.status(400).json({
         error: 'This user do not exists, please check your email! ',
       });
     }
-
-    const trx = await db.transaction();
 
     try {
       let resetedPassword = v4();
@@ -80,29 +74,15 @@ export default class AuthController {
         html: `<h1>Olá, parece que você resetou sua senha</h1> <h4>Somos da equipe de suporte da Proffy e esse email foi enviado para sua redefinição de senha </h4> <p>Sua nova senha é a seguinte: <strong>${resetedPassword}</strong></p>`,
       };
 
-      try {
-        const emailResponse = await mailProvider.sendMail(emailMessage);
-        console.log(emailResponse);
+      const emailResponse = await mailProvider.sendMail(emailMessage);
+      console.log(emailResponse);
 
-        await trx('users')
-          .where('email', email)
-          .update('password', encryptedPassword);
+      await usersRepository.updatePassword(email, encryptedPassword);
 
-        await trx.commit();
-
-        return response.status(201).json({
-          message: emailResponse,
-        });
-      } catch {
-        await trx.rollback();
-
-        return response.status(400).json({
-          error: 'Unexpected error while sending your email',
-        });
-      }
-    } catch (err) {
-      await trx.rollback();
-
+      return response.status(201).json({
+        message: emailResponse,
+      });
+    } catch {
       return response.status(400).json({
         error: 'Unexpected error while sending your email',
       });
