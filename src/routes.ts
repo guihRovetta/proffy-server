@@ -1,12 +1,12 @@
 import express from 'express';
 
-import authMiddleware from './middlewares/authMiddleware';
+import authMiddleware from './app/middlewares/authMiddleware';
 
-import ClassesController from './controllers/ClassesController';
-import ConnectionsController from './controllers/ConnectionsController';
-import UsersController from './controllers/UsersController';
-import AuthController from './controllers/AuthController';
-import FavoritesController from './controllers/FavoritesController';
+import ClassesController from './app/controllers/ClassesController';
+import ConnectionsController from './app/controllers/ConnectionsController';
+import UsersController from './app/controllers/UsersController';
+import AuthController from './app/controllers/AuthController';
+import FavoritesController from './app/controllers/FavoritesController';
 
 const routes = express.Router();
 

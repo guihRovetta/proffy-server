@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import db from '../database/connection';
+import db from '../../database/connection';
 
 export default class FavoritesController {
   async index(request: Request, response: Response) {

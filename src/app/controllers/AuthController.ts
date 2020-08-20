@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 } from 'uuid';
-import nodemailer from 'nodemailer';
 
-import db from '../database/connection';
+import db from '../../database/connection';
 
 import MailProvider from '../providers/MailProvider';
 
@@ -78,17 +77,29 @@ export default class AuthController {
         to: email,
         subject: 'Redefinição de senha',
         text: `Olá, somos da equipe de suporte da Proffy, esse email foi enviado para sua redefinição de senha, que no momento é essa ${resetedPassword}`,
-        html: `<b>Olá, somos da equipe de suporte da Proffy, esse email foi enviado para sua redefinição de senha, que no momento é essa ${resetedPassword}</b>`,
+        html: `<h1>Olá, parece que você resetou sua senha</h1> <h4>Somos da equipe de suporte da Proffy e esse email foi enviado para sua redefinição de senha </h4> <p>Sua nova senha é a seguinte: <strong>${resetedPassword}</strong></p>`,
       };
-      await mailProvider.sendMail(emailMessage);
 
-      await trx('users')
-        .where('email', email)
-        .update('password', encryptedPassword);
+      try {
+        const emailResponse = await mailProvider.sendMail(emailMessage);
+        console.log(emailResponse);
 
-      await trx.commit();
+        await trx('users')
+          .where('email', email)
+          .update('password', encryptedPassword);
 
-      return response.status(201).send();
+        await trx.commit();
+
+        return response.status(201).json({
+          message: emailResponse,
+        });
+      } catch {
+        await trx.rollback();
+
+        return response.status(400).json({
+          error: 'Unexpected error while sending your email',
+        });
+      }
     } catch (err) {
       await trx.rollback();
 
