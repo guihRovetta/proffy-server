@@ -19,6 +19,7 @@ const favoritesController = new FavoritesController();
 routes.get('/classes', classesController.index);
 routes.post('/classes', authMiddleware, classesController.create);
 routes.put('/classes', authMiddleware, classesController.update);
+routes.get('/classes/:id', authMiddleware, classesController.get);
 
 routes.get('/connections', connectionsController.index);
 routes.post('/connections', connectionsController.create);

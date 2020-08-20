@@ -164,4 +164,17 @@ export default class ClassesController {
       });
     }
   }
+
+  async get(request: Request, response: Response) {
+    const { id } = request.params;
+
+    const user_id = id;
+
+    const data = await db('classes')
+      .where('classes.user_id', user_id)
+      .join('class_schedule', 'class_schedule.class_id', '=', 'classes.id')
+      .select(['class_schedule.*']);
+
+    return response.json(data);
+  }
 }
