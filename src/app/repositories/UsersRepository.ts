@@ -7,7 +7,7 @@ interface User {
   password: string;
 }
 
-export default class FavoritesRepository {
+export default class UsersRepository {
   async findById(user_id: number) {
     return await db('users').where('id', user_id).first();
   }

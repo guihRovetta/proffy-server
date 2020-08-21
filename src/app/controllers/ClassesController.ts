@@ -2,7 +2,12 @@ import { Request, Response } from 'express';
 
 import db from '../../database/connection';
 
+import ClassesRepository from '../repositories/ClassesRepository';
+import UsersRepository from '../repositories/UsersRepository';
 import convertHourToMinutes from '../utils/convertHourToMinutes';
+
+const classesRepository = new ClassesRepository();
+const usersRepository = new UsersRepository();
 
 interface ScheduleItem {
   week_day: number;
@@ -15,11 +20,11 @@ export default class ClassesController {
     const filters = request.query;
 
     const subject = filters.subject as string;
-    const week_day = filters.week_day as string;
+    const week_day = Number(filters.week_day);
     const time = filters.time as string;
 
-    const limit = Number(filters.limit) || 5;
-    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit);
+    const page = Number(filters.page);
 
     if (!subject || !week_day || !time) {
       return response.status(400).json({
@@ -29,20 +34,13 @@ export default class ClassesController {
 
     const timeInMinutes = convertHourToMinutes(time);
 
-    const classes = await db('classes')
-      .whereExists(function () {
-        this.select('class_schedule.*')
-          .from('class_schedule')
-          .whereRaw('`class_schedule`.`class_id` = `classes`.`id`')
-          .whereRaw('`class_schedule`.`week_day` = ??', [Number(week_day)])
-          .whereRaw('`class_schedule`.`from` <= ??', [timeInMinutes])
-          .whereRaw('`class_schedule`.`to` > ??', [timeInMinutes]);
-      })
-      .where('classes.subject', '=', subject)
-      .join('users', 'classes.user_id', '=', 'users.id')
-      .select(['classes.*', 'users.*'])
-      .limit(limit)
-      .offset((page - 1) * limit);
+    const classes = await classesRepository.findAll(
+      week_day,
+      timeInMinutes,
+      subject,
+      limit,
+      page
+    );
 
     return response.json(classes);
   }
@@ -50,7 +48,7 @@ export default class ClassesController {
   async create(request: Request, response: Response) {
     const { avatar, whatsapp, bio, subject, cost, schedule } = request.body;
 
-    const id = request.userId;
+    const id = Number(request.userId);
 
     if (!avatar || !whatsapp || !bio) {
       return response.status(400).json({
@@ -64,13 +62,13 @@ export default class ClassesController {
       });
     }
 
-    const user = await db('users').where('id', id).first();
+    const user = await usersRepository.findById(id);
 
     if (!user) {
       return response.status(400).json({ message: 'User not found.' });
     }
 
-    const classExists = await db('classes').where('user_id', id).first();
+    const classExists = await classesRepository.findById(id);
 
     if (classExists) {
       return response.status(400).json({
@@ -139,9 +137,9 @@ export default class ClassesController {
       });
     }
 
-    const id = request.userId;
+    const id = Number(request.userId);
 
-    const userClass = await db('classes').where('user_id', id).first();
+    const userClass = await usersRepository.findById(id);
     const class_id = userClass.id;
 
     const trx = await db.transaction();
@@ -189,12 +187,9 @@ export default class ClassesController {
   async get(request: Request, response: Response) {
     const { id } = request.params;
 
-    const user_id = id;
+    const user_id = Number(id);
 
-    const data = await db('classes')
-      .where('classes.user_id', user_id)
-      .join('class_schedule', 'class_schedule.class_id', '=', 'classes.id')
-      .select(['class_schedule.*']);
+    const data = await classesRepository.findClassSchedule(user_id);
 
     return response.json(data);
   }
