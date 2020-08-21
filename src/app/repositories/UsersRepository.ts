@@ -1,4 +1,5 @@
 import db from '../../database/connection';
+import Knex from 'knex';
 
 interface User {
   name: string;
@@ -48,5 +49,43 @@ export default class UsersRepository {
 
       throw new Error('Unable to update password');
     }
+  }
+
+  async update(
+    trx: Knex.Transaction,
+    id: number,
+    avatar: string,
+    whatsapp: string,
+    bio: string
+  ) {
+    await trx('users').where('id', id).update({
+      avatar,
+      whatsapp,
+      bio,
+    });
+
+    return trx;
+  }
+
+  async fullUpdate(
+    trx: Knex.Transaction,
+    id: number,
+    name: string,
+    lastname: string,
+    email: string,
+    avatar: string,
+    whatsapp: string,
+    bio: string
+  ) {
+    await trx('users').where('id', id).update({
+      name,
+      lastname,
+      email,
+      avatar,
+      whatsapp,
+      bio,
+    });
+
+    return trx;
   }
 }

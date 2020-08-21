@@ -4,10 +4,12 @@ import db from '../../database/connection';
 
 import ClassesRepository from '../repositories/ClassesRepository';
 import UsersRepository from '../repositories/UsersRepository';
+import ClassScheduleRepository from '../repositories/ClassScheduleRepository';
 import convertHourToMinutes from '../utils/convertHourToMinutes';
 
 const classesRepository = new ClassesRepository();
 const usersRepository = new UsersRepository();
+const classScheduleRepository = new ClassScheduleRepository();
 
 interface ScheduleItem {
   week_day: number;
@@ -76,22 +78,22 @@ export default class ClassesController {
       });
     }
 
-    const trx = await db.transaction();
+    let trx = await db.transaction();
 
     try {
-      await trx('users').where('id', id).update({
-        avatar,
-        whatsapp,
-        bio,
-      });
+      trx = await usersRepository.update(trx, id, avatar, whatsapp, bio);
 
       const user_id = user.id;
 
-      const insertedClassesIds = await trx('classes').insert({
+      const created = await classesRepository.create(
+        trx,
         subject,
         cost,
-        user_id,
-      });
+        user_id
+      );
+
+      const insertedClassesIds = created.insertedClassesIds;
+      trx = created.trx;
 
       const class_id = insertedClassesIds[0];
 
@@ -104,7 +106,7 @@ export default class ClassesController {
         };
       });
 
-      await trx('class_schedule').insert(classSchedule);
+      trx = await classScheduleRepository.create(trx, classSchedule);
 
       await trx.commit();
 
@@ -131,7 +133,17 @@ export default class ClassesController {
       schedule,
     } = request.body;
 
-    if (!name || !lastname || !email || !subject || !cost || !schedule) {
+    if (
+      !name ||
+      !lastname ||
+      !email ||
+      !avatar ||
+      !whatsapp ||
+      !bio ||
+      !subject ||
+      !cost ||
+      !schedule
+    ) {
       return response.status(400).json({
         error: 'Missing fields to update user info',
       });
@@ -139,27 +151,29 @@ export default class ClassesController {
 
     const id = Number(request.userId);
 
-    const userClass = await usersRepository.findById(id);
+    const user = await usersRepository.findById(id);
+    const user_id = user.id;
+
+    const userClass = await classesRepository.findById(user_id);
     const class_id = userClass.id;
 
-    const trx = await db.transaction();
+    let trx = await db.transaction();
 
     try {
-      await trx('users').where('id', id).update({
+      trx = await usersRepository.fullUpdate(
+        trx,
+        id,
         name,
         lastname,
         email,
         avatar,
         whatsapp,
-        bio,
-      });
+        bio
+      );
 
-      await trx('classes').where('id', class_id).update({
-        subject,
-        cost,
-      });
+      trx = await classesRepository.update(trx, user_id, subject, cost);
 
-      await trx('class_schedule').where('class_id', class_id).del();
+      trx = await classScheduleRepository.delete(trx, class_id);
 
       const classSchedule = schedule.map((scheduleItem: ScheduleItem) => {
         return {
@@ -170,7 +184,7 @@ export default class ClassesController {
         };
       });
 
-      await trx('class_schedule').insert(classSchedule);
+      trx = await classScheduleRepository.create(trx, classSchedule);
 
       await trx.commit();
 
@@ -179,7 +193,7 @@ export default class ClassesController {
       await trx.rollback();
 
       return response.status(400).json({
-        error: 'Unexpected error while creating new class',
+        error: 'Unexpected error while updating a class',
       });
     }
   }

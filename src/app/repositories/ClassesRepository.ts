@@ -1,4 +1,5 @@
 import db from '../../database/connection';
+import Knex from 'knex';
 
 export default class ClassesRepository {
   async findAll(
@@ -33,5 +34,34 @@ export default class ClassesRepository {
       .where('classes.user_id', user_id)
       .join('class_schedule', 'class_schedule.class_id', '=', 'classes.id')
       .select(['class_schedule.*']);
+  }
+
+  async create(
+    trx: Knex.Transaction,
+    subject: string,
+    cost: number,
+    user_id: number
+  ) {
+    const insertedClassesIds = await trx('classes').insert({
+      subject,
+      cost,
+      user_id,
+    });
+
+    return { trx, insertedClassesIds };
+  }
+
+  async update(
+    trx: Knex.Transaction,
+    user_id: number,
+    subject: string,
+    cost: number
+  ) {
+    await trx('classes').where('user_id', user_id).update({
+      subject,
+      cost,
+    });
+
+    return trx;
   }
 }
