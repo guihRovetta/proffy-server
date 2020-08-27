@@ -18,6 +18,8 @@ export default class UsersController {
 
       const userExists = await usersRepository.findByEmail(email);
 
+      console.log(userExists);
+
       if (userExists) {
         throw new ErrorHandler(400, 'This e-mail is already in use');
       }
@@ -40,7 +42,9 @@ export default class UsersController {
       } catch {
         throw new ErrorHandler(400, 'Unexpected error while creating new user');
       }
-    } catch (error) {}
+    } catch (error) {
+      next(error);
+    }
   }
 
   async show(request: Request, response: Response, next: NextFunction) {

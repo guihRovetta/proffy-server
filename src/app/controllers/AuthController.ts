@@ -81,7 +81,6 @@ export default class AuthController {
         };
 
         const emailResponse = await mailProvider.sendMail(emailMessage);
-        console.log(emailResponse);
 
         await usersRepository.updatePassword(email, encryptedPassword);
 

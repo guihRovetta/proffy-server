@@ -33,9 +33,7 @@ export default class MailProvider {
         html,
       });
 
-      return `📧 E-mail sent - Check URL: ${nodemailer.getTestMessageUrl(
-        info
-      )}`;
+      return `${nodemailer.getTestMessageUrl(info)}`;
     } catch {
       throw new Error('Unable to send e-mail');
     }
