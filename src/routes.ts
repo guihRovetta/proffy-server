@@ -24,7 +24,7 @@ routes.get('/classes/:id', authMiddleware, classesController.get);
 routes.get('/connections', connectionsController.index);
 routes.post('/connections', connectionsController.create);
 
-routes.get('/users/:id', authMiddleware, usersController.show);
+routes.get('/users', authMiddleware, usersController.show);
 routes.post('/users', usersController.create);
 
 routes.post('/auth', authController.authenticate);

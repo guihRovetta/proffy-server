@@ -140,6 +140,8 @@ export default class ClassesController {
         schedule,
       } = request.body;
 
+      console.log(request.body);
+
       if (
         !name ||
         !lastname ||

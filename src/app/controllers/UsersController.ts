@@ -4,8 +4,10 @@ import bcrypt from 'bcryptjs';
 import { ErrorHandler } from '../helpers/error';
 
 import UsersRepository from '../repositories/UsersRepository';
+import ClassesRepository from '../repositories/ClassesRepository';
 
 const usersRepository = new UsersRepository();
+const classesRepository = new ClassesRepository();
 
 export default class UsersController {
   async create(request: Request, response: Response, next: NextFunction) {
@@ -49,7 +51,7 @@ export default class UsersController {
 
   async show(request: Request, response: Response, next: NextFunction) {
     try {
-      const { id } = request.params;
+      const id = request.userId;
 
       const user = await usersRepository.findById(Number(id));
 
@@ -57,9 +59,11 @@ export default class UsersController {
         throw new ErrorHandler(400, 'User not found');
       }
 
+      const userClass = await classesRepository.findById(Number(id));
+
       delete user.password;
 
-      return response.json({ user });
+      return response.json({ user, class: userClass });
     } catch (error) {
       next(error);
     }
